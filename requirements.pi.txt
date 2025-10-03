@@ -1,0 +1,6 @@
+-r requirements.txt
+python-escpos
+qrcode
+Pillow
+pyusb
+pyserial

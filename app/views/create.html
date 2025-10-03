@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Create Ticket</h2>
+
+<form id="ticket-form" method="post" action="/api/tickets">
+  <!-- Title (optional, auto-filled from first line) -->
+  <label>
+    Title <small class="muted">(optional — auto from first line)</small>
+    <input id="title" name="title" maxlength="200" placeholder="(leave blank to auto-fill)">
+  </label>
+
+  <!-- Details -->
+  <label>
+    Details
+    <textarea id="body" name="body" rows="10" placeholder="Type first line (<= 50 chars) then Enter…" required></textarea>
+    <div class="row between muted xs">
+      <span id="autoTitleHint">Title will be inferred from first line…</span>
+      <span id="charCount">0 chars</span>
+    </div>
+  </label>
+
+  <!-- Urgency (⚡ bolts 0–3) -->
+  <fieldset>
+    <legend>Urgency</legend>
+    <div class="bolts" role="radiogroup" aria-label="Urgency">
+      <!-- hidden real select for graceful fallback -->
+      <select id="urgency" name="urgency" class="sr-only">
+        <option value="none">none</option>
+        <option value="low">low</option>
+        <option value="normal" selected>normal</option>
+        <option value="high">high</option>
+        <option value="critical">critical</option>
+      </select>
+
+      <!-- visual bolt buttons -->
+      <button type="button" data-bolts="0" aria-pressed="false" title="None">⚪⚪⚪</button>
+      <button type="button" data-bolts="1" aria-pressed="false" title="Low">⚡⚪⚪</button>
+      <button type="button" data-bolts="2" aria-pressed="true"  title="Normal" class="active">⚡⚡⚪</button>
+      <button type="button" data-bolts="3" aria-pressed="false" title="High">⚡⚡⚡</button>
+    </div>
+    
+    <!-- Urgency Plus toggle -->
+    <label class="row">
+      <input type="checkbox" id="urgency_plus" name="urgency_plus">
+      <span>Urgency Plus (+)</span>
+    </label>
+  </fieldset>
+
+  <!-- Due date -->
+  <fieldset>
+    <legend>Due</legend>
+    <div class="due">
+      <label><input type="radio" name="due_quick" value="" checked> None</label>
+      <label><input type="radio" name="due_quick" value="this_week"> This week</label>
+      <label><input type="radio" name="due_quick" value="next_week"> Next week</label>
+      <label><input type="radio" name="due_quick" value="this_month"> This month</label>
+      <label><input type="radio" name="due_quick" value="custom"> Custom</label>
+      <input type="date" id="due_date" name="due_date" disabled aria-disabled="true">
+    </div>
+  </fieldset>
+
+  <!-- Tag -->
+  <label>
+    Tag <small class="muted">(optional)</small>
+    <input id="tag" name="tag" maxlength="50" placeholder="e.g., work, personal, urgent">
+  </label>
+
+  <div class="row">
+    <button type="submit">Print</button>
+    <button type="reset" class="ghost">Clear</button>
+  </div>
+</form>
+
+<!-- tiny inline JS for UX (no bundler) -->
+<script>
+(function () {
+  const title = document.getElementById('title');
+  const body = document.getElementById('body');
+  const autoHint = document.getElementById('autoTitleHint');
+  const charCount = document.getElementById('charCount');
+  const bolts = document.querySelectorAll('.bolts button');
+  const urgency = document.getElementById('urgency');
+  const dueRadios = document.querySelectorAll('input[name="due_quick"]');
+  const dueDate = document.getElementById('due_date');
+
+  // Character counter
+  body.addEventListener('input', () => {
+    charCount.textContent = `${body.value.length} chars`;
+  });
+
+  // Auto-title on first Enter if title empty and first line <= 50
+  body.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const firstLine = body.value.split('\n')[0].trim();
+      if (!title.value && firstLine.length > 0 && firstLine.length <= 50) {
+        title.value = firstLine;
+        autoHint.textContent = 'Title auto-filled from first line.';
+      }
+    }
+  });
+
+  // Lightning bolts → urgency mapping (0=none, 1=low, 2=normal, 3=high)
+  const map = ['none','low','normal','high'];
+  bolts.forEach(btn => {
+    btn.addEventListener('click', () => {
+      bolts.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const n = +btn.dataset.bolts;
+      urgency.value = map[Math.min(n, 3)];
+      bolts.forEach((b,i)=>b.setAttribute('aria-pressed', +b.dataset.bolts===n ? 'true' : 'false'));
+    });
+  });
+
+  // Due quick picks
+  function toggleDue() {
+    const v = document.querySelector('input[name="due_quick"]:checked').value;
+    const isCustom = v === 'custom';
+    dueDate.disabled = !isCustom;
+    dueDate.setAttribute('aria-disabled', String(!isCustom));
+  }
+  dueRadios.forEach(r => r.addEventListener('change', toggleDue));
+  toggleDue();
+})();
+</script>
+{% endblock %}

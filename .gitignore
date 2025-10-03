@@ -1,0 +1,145 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment and sensitive files
+.env*
+!.env.example
+!.env.pi.example
+*.key
+*.pem
+id_rsa*
+*.p12
+*.pfx
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Archives and output directories
+archives/
+_out/
+output/
+logs/
+*.log
+
+# Test files and temporary files
+test_*.py
+*_test.py
+temp_*.py
+scratch*.py
+debug*.py
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Development and deployment
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.prof
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# Documentation build
+docs/_build/
+
+# Raspberry Pi specific
+*.img
+*.zip
+backup_*.tar.gz
+
+# SSH keys and certificates
+*.key
+*.crt
+*.csr
+*.p12
+ssh_keys/
+.ssh/
+piSSH
+piSSH.pub
+
+# Documentation that shouldn't be committed
+CLAUDE.md
+DEPLOYMENT_SUCCESS.md
+PI_SETUP.md
+project*.txt
+*.handoff*
+
+# Old virtual environment
+.toDoTicketWeb/
+
+# Alternative requirements files
+pi-requirements.txt
+
+# Bootstrap scripts
+bootstrap_*.sh
+
+# Docker (if not needed)
+Dockerfile
+
+# Local configuration overrides
+config.local.*
+settings.local.*
+
+# Temporary sync files
+.*.tmp
+*.lock

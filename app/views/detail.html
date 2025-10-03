@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="ticket-detail">
+  <header class="detail-header">
+    <h2>{{ ticket.title }}</h2>
+    <div class="detail-meta muted">
+      <span class="urgency urgency-{{ ticket.urgency.value }}">{{ ticket.urgency.value }}</span> •
+      <span>{{ ticket.status }}</span> •
+      <span>{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      {% if ticket.due_date %}
+        • <span>Due: {{ ticket.due_date }}</span>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="detail-body">
+    <pre>{{ ticket.body }}</pre>
+  </div>
+
+  <div class="detail-actions">
+    <a href="/history" class="ghost">← Back to History</a>
+    
+    <form style="display: inline;" onsubmit="return confirmDelete('{{ ticket.title }}')">
+      <button type="submit" class="danger" formaction="/tickets/{{ ticket.id }}/delete" formmethod="post">
+        Delete Ticket
+      </button>
+    </form>
+  </div>
+</article>
+
+<script>
+function confirmDelete(title) {
+  return confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`);
+}
+</script>
+{% endblock %}

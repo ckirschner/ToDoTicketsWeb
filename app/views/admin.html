@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>System Administration</h2>
+
+<div class="admin-section">
+  <h3>Print Configuration</h3>
+  <p><strong>Backend:</strong> {{ admin.print_backend }}</p>
+  {% if admin.connection_info %}
+  <p><strong>Connection:</strong> {{ admin.connection_info }}</p>
+  {% endif %}
+</div>
+
+<div class="admin-section">
+  <h3>Storage</h3>
+  <p><strong>Archive Directory:</strong> {{ admin.archive_dir }}</p>
+  <p><strong>Output Directory:</strong> {{ admin.output_dir }}</p>
+  
+  {% if admin.disk_info %}
+  <div class="disk-usage">
+    <p><strong>Disk Usage:</strong></p>
+    <ul>
+      <li>Total: {{ admin.disk_info.total_gb }} GB</li>
+      <li>Used: {{ admin.disk_info.used_gb }} GB ({{ admin.disk_info.used_percent }}%)</li>
+      <li>Free: {{ admin.disk_info.free_gb }} GB</li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<div class="admin-section">
+  <h3>System Health</h3>
+  <p><strong>API Status:</strong> <span id="health-status">Checking...</span></p>
+  <button onclick="checkHealth()">Refresh Health Check</button>
+</div>
+
+<style>
+.admin-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.disk-usage ul {
+  margin: 0.5rem 0;
+}
+#health-status {
+  font-weight: bold;
+}
+.health-ok { color: green; }
+.health-error { color: red; }
+</style>
+
+<script>
+function checkHealth() {
+  const statusEl = document.getElementById('health-status');
+  statusEl.textContent = 'Checking...';
+  statusEl.className = '';
+  
+  fetch('/api/health')
+    .then(response => response.json())
+    .then(data => {
+      if (data.ok) {
+        statusEl.textContent = 'OK';
+        statusEl.className = 'health-ok';
+      } else {
+        statusEl.textContent = 'Error';
+        statusEl.className = 'health-error';
+      }
+    })
+    .catch(error => {
+      statusEl.textContent = 'Failed to connect';
+      statusEl.className = 'health-error';
+    });
+}
+
+// Check health on page load
+checkHealth();
+</script>
+
+{% endblock %}

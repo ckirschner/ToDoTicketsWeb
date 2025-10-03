@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>History</h2>
+
+<div class="history">
+  {% for t in items %}
+    <div class="ticket-item">
+      <button class="ticket-head" 
+              onclick="toggleTicket('{{ t.id }}')" 
+              aria-expanded="false" 
+              aria-controls="ticket-{{ t.id }}-body">
+        <div class="ticket-header">
+          <strong>{{ t.title }}</strong>
+          <span class="muted">{{ t.urgency.value }} • {{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+      </button>
+      
+      <div id="ticket-{{ t.id }}-body" class="ticket-body" style="display: none;">
+        <div class="ticket-meta">
+          <div class="meta-row">
+            <span><strong>Urgency:</strong> {{ t.urgency.value }}</span>
+            <span><strong>Status:</strong> {{ t.status }}</span>
+          </div>
+          <div class="meta-row">
+            <span><strong>Created:</strong> {{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            <span><strong>Due:</strong> {{ t.due_date if t.due_date else '—' }}</span>
+          </div>
+        </div>
+        
+        <div class="ticket-content">
+          <pre>{{ t.body }}</pre>
+        </div>
+        
+        <div class="actions">
+          <a href="/tickets/{{ t.id }}" class="ghost">Open</a>
+          <form style="display: inline;" onsubmit="return confirmDelete('{{ t.title }}')">
+            <input type="hidden" name="_method" value="delete">
+            <button type="submit" class="danger" formaction="/tickets/{{ t.id }}/delete" formmethod="post">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No tickets yet. <a href="/">Create your first ticket</a>.</p>
+  {% endfor %}
+</div>
+
+<script>
+function toggleTicket(ticketId) {
+  const allBodies = document.querySelectorAll('.ticket-body');
+  const allHeaders = document.querySelectorAll('.ticket-head');
+  const targetBody = document.getElementById(`ticket-${ticketId}-body`);
+  const targetHeader = document.querySelector(`[aria-controls="ticket-${ticketId}-body"]`);
+  
+  // Close all other tickets
+  allBodies.forEach(body => {
+    if (body !== targetBody) {
+      body.style.display = 'none';
+    }
+  });
+  
+  allHeaders.forEach(header => {
+    if (header !== targetHeader) {
+      header.setAttribute('aria-expanded', 'false');
+    }
+  });
+  
+  // Toggle the clicked ticket
+  const isExpanded = targetHeader.getAttribute('aria-expanded') === 'true';
+  if (isExpanded) {
+    targetBody.style.display = 'none';
+    targetHeader.setAttribute('aria-expanded', 'false');
+  } else {
+    targetBody.style.display = 'block';
+    targetHeader.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function confirmDelete(title) {
+  return confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`);
+}
+
+// Keyboard support
+document.addEventListener('keydown', function(e) {
+  if (e.target.classList.contains('ticket-head') && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
+</script>
+{% endblock %}

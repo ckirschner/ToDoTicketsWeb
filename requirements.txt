@@ -1,0 +1,8 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+jinja2
+sqlalchemy>=2.0
+pydantic>=2.0
+weasyprint
+python-multipart
