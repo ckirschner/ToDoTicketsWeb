@@ -8,6 +8,7 @@ from .schemas import TicketCreate
 from .models import Ticket, Urgency
 from .printing import print_ticket
 from .storage import archive_paths, write_metadata, compute_hash
+from .tags import get_preset_tags
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 from typing import Optional
@@ -42,7 +43,8 @@ def health():
 
 @app.get("/", response_class=HTMLResponse)
 def create_form(request: Request):
-    return templates.TemplateResponse("create.html", {"request": request})
+    preset_tags = get_preset_tags()
+    return templates.TemplateResponse("create.html", {"request": request, "preset_tags": preset_tags})
 
 # Minimal create -> (later) render/print/archive
 def _resolve_due(due_quick: Optional[str], due_date_str: Optional[str]) -> Optional[str]:

@@ -65,10 +65,20 @@
   </fieldset>
 
   <!-- Tag -->
-  <label>
-    Tag <small class="muted">(optional)</small>
-    <input id="tag" name="tag" maxlength="50" placeholder="e.g., work, personal, urgent">
-  </label>
+  <fieldset>
+    <legend>Tag <small class="muted">(optional)</small></legend>
+    
+    <!-- Preset tag buttons -->
+    <div class="preset-tags" style="margin-bottom: 0.5rem;">
+      {% for tag in preset_tags %}
+      <button type="button" class="preset-tag-btn" data-tag="{{ tag.value }}" style="background-color: {{ tag.color }}20; border: 1px solid {{ tag.color }}; color: {{ tag.color }}; margin: 0.2rem; padding: 0.3rem 0.6rem; border-radius: 0.3rem; font-size: 0.8rem;">{{ tag.label }}</button>
+      {% endfor %}
+      <button type="button" class="preset-tag-btn" data-tag="" style="background: #f3f4f6; border: 1px solid #d1d5db; color: #6b7280; margin: 0.2rem; padding: 0.3rem 0.6rem; border-radius: 0.3rem; font-size: 0.8rem;">None</button>
+    </div>
+    
+    <!-- Manual tag input -->
+    <input id="tag" name="tag" maxlength="50" placeholder="Or type custom tag...">
+  </fieldset>
 
   <div class="row">
     <button type="submit">Print</button>
@@ -87,6 +97,8 @@
   const urgency = document.getElementById('urgency');
   const dueRadios = document.querySelectorAll('input[name="due_quick"]');
   const dueDate = document.getElementById('due_date');
+  const tagButtons = document.querySelectorAll('.preset-tag-btn');
+  const tagInput = document.getElementById('tag');
 
   // Character counter
   body.addEventListener('input', () => {
@@ -125,6 +137,26 @@
   }
   dueRadios.forEach(r => r.addEventListener('change', toggleDue));
   toggleDue();
+
+  // Preset tag buttons
+  tagButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active state from all buttons
+      tagButtons.forEach(b => b.classList.remove('active'));
+      
+      // Add active state to clicked button
+      btn.classList.add('active');
+      
+      // Set the tag input value
+      const tagValue = btn.getAttribute('data-tag');
+      tagInput.value = tagValue;
+    });
+  });
+
+  // When typing in tag input, clear button active states
+  tagInput.addEventListener('input', () => {
+    tagButtons.forEach(b => b.classList.remove('active'));
+  });
 })();
 </script>
 {% endblock %}
