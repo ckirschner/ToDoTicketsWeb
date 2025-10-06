@@ -49,6 +49,8 @@ def _resolve_due(due_quick: Optional[str], due_date_str: Optional[str]) -> Optio
     """Resolve quick due date options to actual ISO dates"""
     if due_quick == "custom" and due_date_str:
         return due_date_str
+    if due_quick == "today":
+        return date.today().isoformat()
     if due_quick == "this_week":
         # next Sunday (assuming Mon–Sun workweek; adjust if you prefer)
         today = date.today()
@@ -96,6 +98,7 @@ def create_ticket(
 ):
     # Map due_quick to patch brief modes and resolve due date
     due_mode_map = {
+        "today": "DATE",
         "this_week": "THIS_WEEK",
         "next_week": "NEXT_WEEK", 
         "this_month": "THIS_MONTH",
