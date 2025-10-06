@@ -218,7 +218,7 @@ def create_ticket(
         db.commit()
         logger.info(f"MAIN: Ticket {ticket.id} marked as failed")
         
-    return RedirectResponse(url="/history", status_code=303)
+    return RedirectResponse(url="/", status_code=303)
 
 @app.get("/history", response_class=HTMLResponse)
 def history(request: Request, db: Session = Depends(get_db)):
