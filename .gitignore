@@ -34,6 +34,7 @@ venv.bak/
 .env*
 !.env.example
 !.env.pi.example
+!.env.pi
 *.key
 *.pem
 id_rsa*
