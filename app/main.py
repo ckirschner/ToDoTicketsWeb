@@ -8,7 +8,7 @@ from .schemas import TicketCreate
 from .models import Ticket, Urgency
 from .printing import print_ticket
 from .storage import archive_paths, write_metadata, compute_hash
-from .tags import get_preset_tags
+from .tags import get_preset_tags, save_preset_tags, validate_tag_config
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 from typing import Optional
@@ -265,15 +265,61 @@ def admin(request: Request):
     except Exception:
         pass
     
+    # Get current preset tags
+    preset_tags = get_preset_tags()
+    
     admin_data = {
         "print_backend": print_backend,
         "archive_dir": archive_dir,
         "output_dir": output_dir,
         "connection_info": connection_info,
-        "disk_info": disk_info
+        "disk_info": disk_info,
+        "preset_tags": preset_tags
     }
     
     return templates.TemplateResponse("admin.html", {"request": request, "admin": admin_data})
+
+@app.post("/api/admin/tags")
+def update_preset_tags(request: Request, tags_json: str = Form(...)):
+    """Update preset tags configuration"""
+    try:
+        import json
+        tags_data = json.loads(tags_json)
+        
+        # Validate the configuration
+        if not validate_tag_config(tags_data):
+            return {"success": False, "error": "Invalid tag configuration format"}
+        
+        # Save the new configuration
+        if save_preset_tags(tags_data):
+            return {"success": True, "message": "Tags updated successfully"}
+        else:
+            return {"success": False, "error": "Failed to save tag configuration"}
+    
+    except json.JSONDecodeError:
+        return {"success": False, "error": "Invalid JSON format"}
+    except Exception as e:
+        logger.error(f"Error updating tags: {e}")
+        return {"success": False, "error": "Internal server error"}
+
+@app.delete("/api/admin/tags/{tag_value}")
+def delete_preset_tag(tag_value: str):
+    """Delete a specific preset tag"""
+    try:
+        current_tags = get_preset_tags()
+        updated_tags = [tag for tag in current_tags if tag["value"] != tag_value]
+        
+        if len(updated_tags) == len(current_tags):
+            return {"success": False, "error": "Tag not found"}
+        
+        if save_preset_tags(updated_tags):
+            return {"success": True, "message": "Tag deleted successfully"}
+        else:
+            return {"success": False, "error": "Failed to save configuration"}
+    
+    except Exception as e:
+        logger.error(f"Error deleting tag: {e}")
+        return {"success": False, "error": "Internal server error"}
 
 @app.get("/tickets/{ticket_id}", response_class=HTMLResponse)
 def ticket_detail(request: Request, ticket_id: str, db: Session = Depends(get_db)):
