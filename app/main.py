@@ -87,7 +87,7 @@ def create_ticket(
     request: Request,
     title: Optional[str] = Form(None),
     body: str = Form(...),
-    urgency: str = Form("normal"),
+    urgency: str = Form("none"),
     urgency_plus: bool = Form(False),
     tag: Optional[str] = Form(None),
     due_quick: Optional[str] = Form(None),

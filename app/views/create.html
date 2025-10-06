@@ -25,17 +25,17 @@
     <div class="bolts" role="radiogroup" aria-label="Urgency">
       <!-- hidden real select for graceful fallback -->
       <select id="urgency" name="urgency" class="sr-only">
-        <option value="none">none</option>
+        <option value="none" selected>none</option>
         <option value="low">low</option>
-        <option value="normal" selected>normal</option>
+        <option value="normal">normal</option>
         <option value="high">high</option>
         <option value="critical">critical</option>
       </select>
 
       <!-- visual bolt buttons -->
-      <button type="button" data-bolts="0" aria-pressed="false" title="None">⚪⚪⚪</button>
+      <button type="button" data-bolts="0" aria-pressed="true" title="None" class="active">⚪⚪⚪</button>
       <button type="button" data-bolts="1" aria-pressed="false" title="Low">⚡⚪⚪</button>
-      <button type="button" data-bolts="2" aria-pressed="true"  title="Normal" class="active">⚡⚡⚪</button>
+      <button type="button" data-bolts="2" aria-pressed="false" title="Normal">⚡⚡⚪</button>
       <button type="button" data-bolts="3" aria-pressed="false" title="High">⚡⚡⚡</button>
     </div>
     
