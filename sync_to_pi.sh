@@ -51,6 +51,13 @@ rsync_push() {
     -e "ssh -i '$SSH_KEY' -p $SSH_PORT" \
     "$LOCAL_APP_PATH"/ \
     "$SSH_CONN:$PI_APP_DIR"/
+  
+  # Copy Pi-specific .env file if it exists
+  if [[ -f "$ROOT_DIR/.env.pi" ]]; then
+    echo "Copying Pi-specific environment configuration..."
+    scp -i "$SSH_KEY" -P "$SSH_PORT" "$ROOT_DIR/.env.pi" "$SSH_CONN:$PI_APP_DIR/.env"
+  fi
+  
   echo "Done."
 }
 
