@@ -1,17 +1,77 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>History</h2>
+<h2>Ticket History</h2>
 
+<!-- Search and Filter Controls -->
+<div class="controls-section">
+  <form id="filter-form" method="get" action="/history">
+    <div class="search-row">
+      <input type="text" name="search" placeholder="Search tickets..." value="{{ search }}" class="search-input">
+      <button type="submit" class="search-btn">Search</button>
+    </div>
+    
+    <div class="filter-row">
+      <select name="status">
+        <option value="">All Statuses</option>
+        {% for s in all_statuses %}
+        <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s.title() }}</option>
+        {% endfor %}
+      </select>
+      
+      <select name="urgency">
+        <option value="">All Urgencies</option>
+        {% for u in all_urgencies %}
+        <option value="{{ u }}" {% if urgency == u %}selected{% endif %}>{{ u.title() }}</option>
+        {% endfor %}
+      </select>
+      
+      <select name="sort">
+        <option value="created_desc" {% if sort == "created_desc" %}selected{% endif %}>Newest First</option>
+        <option value="created_asc" {% if sort == "created_asc" %}selected{% endif %}>Oldest First</option>
+        <option value="urgency_desc" {% if sort == "urgency_desc" %}selected{% endif %}>Highest Urgency</option>
+        <option value="title_asc" {% if sort == "title_asc" %}selected{% endif %}>Title A-Z</option>
+      </select>
+      
+      <button type="submit">Filter</button>
+      <a href="/history" class="clear-btn">Clear</a>
+    </div>
+  </form>
+  
+  <!-- Bulk Operations -->
+  <div class="bulk-controls">
+    <button id="select-all-btn" onclick="toggleSelectAll()">Select All</button>
+    <button id="bulk-delete-btn" onclick="bulkDelete()" disabled>Delete Selected</button>
+    <span id="selected-count">0 selected</span>
+  </div>
+</div>
+
+<!-- Results Summary -->
+<div class="results-summary">
+  <span>{{ total_count }} ticket{{ 's' if total_count != 1 else '' }} found</span>
+  {% if search %}
+  <span class="search-term">Searching for: "{{ search }}"</span>
+  {% endif %}
+</div>
+
+<!-- Ticket List -->
 <div class="history">
   {% for t in items %}
     <div class="ticket-item">
+      <div class="ticket-checkbox">
+        <input type="checkbox" class="ticket-select" value="{{ t.id }}" onchange="updateBulkControls()">
+      </div>
+      
       <button class="ticket-head" 
               onclick="toggleTicket('{{ t.id }}')" 
               aria-expanded="false" 
               aria-controls="ticket-{{ t.id }}-body">
         <div class="ticket-header">
           <strong>{{ t.title }}</strong>
-          <span class="muted">{{ t.urgency.value }} • {{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+          <div class="ticket-meta-inline">
+            <span class="urgency-badge urgency-{{ t.urgency.value }}">{{ t.urgency.value }}</span>
+            <span class="status-badge status-{{ t.status }}">{{ t.status }}</span>
+            <span class="muted">{{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+          </div>
         </div>
       </button>
       
@@ -25,6 +85,11 @@
             <span><strong>Created:</strong> {{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
             <span><strong>Due:</strong> {{ t.due_date if t.due_date else '—' }}</span>
           </div>
+          {% if t.printed_at %}
+          <div class="meta-row">
+            <span><strong>Printed:</strong> {{ t.printed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+          </div>
+          {% endif %}
         </div>
         
         <div class="ticket-content">
@@ -32,6 +97,7 @@
         </div>
         
         <div class="actions">
+          <button onclick="reprintTicket('{{ t.id }}')" class="reprint-btn">Reprint</button>
           <a href="/tickets/{{ t.id }}" class="ghost">Open</a>
           <form style="display: inline;" onsubmit="return confirmDelete('{{ t.title }}')">
             <input type="hidden" name="_method" value="delete">
@@ -41,11 +107,214 @@
       </div>
     </div>
   {% else %}
-    <p class="muted">No tickets yet. <a href="/">Create your first ticket</a>.</p>
+    <p class="muted">No tickets found. <a href="/">Create your first ticket</a>.</p>
   {% endfor %}
 </div>
 
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if has_prev %}
+    <a href="?{{ request.url.query }}page={{ page - 1 }}" class="page-btn">« Previous</a>
+  {% endif %}
+  
+  <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+  
+  {% if has_next %}
+    <a href="?{{ request.url.query }}page={{ page + 1 }}" class="page-btn">Next »</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<style>
+/* Search and Filter Controls */
+.controls-section {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.search-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.search-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.filter-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-row select, .filter-row button {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.clear-btn {
+  background: #6c757d;
+  color: white;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+/* Bulk Operations */
+.bulk-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+}
+.bulk-controls button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.bulk-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+#bulk-delete-btn {
+  background: #dc3545;
+  color: white;
+}
+#selected-count {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+/* Results Summary */
+.results-summary {
+  margin-bottom: 1rem;
+  color: #6c757d;
+}
+.search-term {
+  font-weight: bold;
+  color: #007bff;
+}
+
+/* Enhanced Ticket Items */
+.ticket-item {
+  display: flex;
+  align-items: flex-start;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  background: white;
+}
+.ticket-checkbox {
+  padding: 1rem 0.5rem;
+  display: flex;
+  align-items: center;
+}
+.ticket-head {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.ticket-head:hover {
+  background: #f8f9fa;
+}
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ticket-meta-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Status and Urgency Badges */
+.urgency-badge, .status-badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.urgency-none { background: #e9ecef; color: #6c757d; }
+.urgency-low { background: #d1ecf1; color: #0c5460; }
+.urgency-normal { background: #fff3cd; color: #856404; }
+.urgency-high { background: #f8d7da; color: #721c24; }
+.urgency-critical { background: #721c24; color: white; }
+.status-printed { background: #d4edda; color: #155724; }
+.status-failed { background: #f8d7da; color: #721c24; }
+
+/* Reprint Button */
+.reprint-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+.reprint-btn:hover {
+  background: #138496;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.page-btn {
+  padding: 0.5rem 1rem;
+  background: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+}
+.page-btn:hover {
+  background: #0056b3;
+}
+.page-info {
+  color: #6c757d;
+}
+
+/* Message Display */
+#message {
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  display: none;
+}
+.message-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.message-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+</style>
+
 <script>
+let selectedTickets = new Set();
+
+// Toggle individual ticket expansion
 function toggleTicket(ticketId) {
   const allBodies = document.querySelectorAll('.ticket-body');
   const allHeaders = document.querySelectorAll('.ticket-head');
@@ -76,9 +345,117 @@ function toggleTicket(ticketId) {
   }
 }
 
+// Bulk selection functionality
+function toggleSelectAll() {
+  const checkboxes = document.querySelectorAll('.ticket-select');
+  const allSelected = selectedTickets.size === checkboxes.length;
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = !allSelected;
+    if (!allSelected) {
+      selectedTickets.add(checkbox.value);
+    } else {
+      selectedTickets.delete(checkbox.value);
+    }
+  });
+  
+  updateBulkControls();
+}
+
+function updateBulkControls() {
+  selectedTickets.clear();
+  document.querySelectorAll('.ticket-select:checked').forEach(cb => {
+    selectedTickets.add(cb.value);
+  });
+  
+  const count = selectedTickets.size;
+  document.getElementById('selected-count').textContent = `${count} selected`;
+  document.getElementById('bulk-delete-btn').disabled = count === 0;
+  document.getElementById('select-all-btn').textContent = 
+    count === document.querySelectorAll('.ticket-select').length ? 'Deselect All' : 'Select All';
+}
+
+// Bulk delete
+function bulkDelete() {
+  if (selectedTickets.size === 0) return;
+  
+  if (!confirm(`Are you sure you want to delete ${selectedTickets.size} ticket(s)?\n\nThis action cannot be undone.`)) {
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('ticket_ids', JSON.stringify([...selectedTickets]));
+  
+  fetch('/api/tickets/bulk-delete', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showMessage(data.message, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showMessage(data.error, 'error');
+    }
+  })
+  .catch(error => {
+    showMessage('Network error: ' + error.message, 'error');
+  });
+}
+
+// Reprint functionality
+function reprintTicket(ticketId) {
+  if (!confirm('Reprint this ticket?')) return;
+  
+  fetch(`/api/tickets/${ticketId}/reprint`, { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showMessage(data.message, 'success');
+      } else {
+        showMessage(data.error, 'error');
+      }
+    })
+    .catch(error => {
+      showMessage('Network error: ' + error.message, 'error');
+    });
+}
+
+// Message display
+function showMessage(text, type) {
+  let messageEl = document.getElementById('message');
+  if (!messageEl) {
+    messageEl = document.createElement('div');
+    messageEl.id = 'message';
+    document.querySelector('.controls-section').appendChild(messageEl);
+  }
+  
+  messageEl.textContent = text;
+  messageEl.className = `message-${type}`;
+  messageEl.style.display = 'block';
+  
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+  }, 5000);
+}
+
+// Confirm delete
 function confirmDelete(title) {
   return confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`);
 }
+
+// Auto-submit form on filter changes
+document.addEventListener('DOMContentLoaded', function() {
+  const selects = document.querySelectorAll('.filter-row select');
+  selects.forEach(select => {
+    select.addEventListener('change', function() {
+      document.getElementById('filter-form').submit();
+    });
+  });
+  
+  updateBulkControls();
+});
 
 // Keyboard support
 document.addEventListener('keydown', function(e) {

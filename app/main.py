@@ -223,9 +223,153 @@ def create_ticket(
     return RedirectResponse(url="/", status_code=303)
 
 @app.get("/history", response_class=HTMLResponse)
-def history(request: Request, db: Session = Depends(get_db)):
-    items = db.query(Ticket).order_by(Ticket.created_at.desc()).limit(100).all()
-    return templates.TemplateResponse("history.html", {"request": request, "items": items})
+def history(
+    request: Request, 
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    urgency: Optional[str] = None,
+    tag: Optional[str] = None,
+    sort: str = "created_desc",
+    page: int = 1,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    # Build query with filters
+    query = db.query(Ticket)
+    
+    # Apply search filter
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (Ticket.title.ilike(search_term)) | 
+            (Ticket.body.ilike(search_term))
+        )
+    
+    # Apply status filter
+    if status:
+        query = query.filter(Ticket.status == status)
+    
+    # Apply urgency filter
+    if urgency:
+        query = query.filter(Ticket.urgency == urgency)
+    
+    # Apply sorting
+    if sort == "created_desc":
+        query = query.order_by(Ticket.created_at.desc())
+    elif sort == "created_asc":
+        query = query.order_by(Ticket.created_at.asc())
+    elif sort == "urgency_desc":
+        query = query.order_by(Ticket.urgency.desc(), Ticket.created_at.desc())
+    elif sort == "title_asc":
+        query = query.order_by(Ticket.title.asc())
+    else:
+        query = query.order_by(Ticket.created_at.desc())
+    
+    # Get total count before pagination
+    total_count = query.count()
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    items = query.offset(offset).limit(limit).all()
+    
+    # Calculate pagination info
+    total_pages = (total_count + limit - 1) // limit
+    has_prev = page > 1
+    has_next = page < total_pages
+    
+    # Get filter options for dropdowns
+    all_statuses = db.query(Ticket.status).distinct().all()
+    all_urgencies = [u.value for u in Urgency]
+    
+    context = {
+        "request": request,
+        "items": items,
+        "search": search or "",
+        "status": status,
+        "urgency": urgency,
+        "tag": tag,
+        "sort": sort,
+        "page": page,
+        "limit": limit,
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "has_prev": has_prev,
+        "has_next": has_next,
+        "all_statuses": [s[0] for s in all_statuses if s[0]],
+        "all_urgencies": all_urgencies,
+        "preset_tags": get_preset_tags()
+    }
+    
+    return templates.TemplateResponse("history.html", context)
+
+@app.post("/api/tickets/{ticket_id}/reprint")
+def reprint_ticket(ticket_id: str, db: Session = Depends(get_db)):
+    """Reprint an existing ticket"""
+    try:
+        ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+        if not ticket:
+            return {"success": False, "error": "Ticket not found"}
+        
+        # Build HTML content for reprinting
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Ticket {ticket.id}</title>
+            <style>
+                body {{ font-family: monospace; font-size: 12px; }}
+                .header {{ text-align: center; font-weight: bold; }}
+                .urgency {{ text-transform: uppercase; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">Ticket #{ticket.id} (REPRINT)</div>
+            <h2>{ticket.title}</h2>
+            <p><strong>Urgency:</strong> <span class="urgency">{ticket.urgency.value}</span></p>
+            {f'<p><strong>Due:</strong> {ticket.due_date}</p>' if ticket.due_date else ''}
+            <p><strong>Created:</strong> {ticket.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <p><strong>Reprinted:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}</p>
+            <hr>
+            <div>{ticket.body}</div>
+            <hr>
+            <p style="text-align: center;">toDoTickets (REPRINT)</p>
+        </body>
+        </html>
+        """
+        
+        # Print the ticket (reuse existing print logic)
+        print_result = print_ticket(ticket, html_content, urgency_plus=False, tag=None, due_mode="NONE")
+        
+        if print_result["backend"] in ["escpos", "file"]:
+            return {"success": True, "message": "Ticket reprinted successfully"}
+        else:
+            return {"success": False, "error": "Print job failed"}
+    
+    except Exception as e:
+        logger.error(f"Error reprinting ticket {ticket_id}: {e}")
+        return {"success": False, "error": "Internal server error"}
+
+@app.post("/api/tickets/bulk-delete")
+def bulk_delete_tickets(request: Request, ticket_ids: str = Form(...), db: Session = Depends(get_db)):
+    """Delete multiple tickets"""
+    try:
+        import json
+        ids_list = json.loads(ticket_ids)
+        
+        if not ids_list:
+            return {"success": False, "error": "No tickets selected"}
+        
+        # Delete tickets
+        deleted_count = db.query(Ticket).filter(Ticket.id.in_(ids_list)).delete(synchronize_session=False)
+        db.commit()
+        
+        return {"success": True, "message": f"Deleted {deleted_count} tickets"}
+    
+    except json.JSONDecodeError:
+        return {"success": False, "error": "Invalid ticket IDs format"}
+    except Exception as e:
+        logger.error(f"Error bulk deleting tickets: {e}")
+        return {"success": False, "error": "Internal server error"}
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request):
